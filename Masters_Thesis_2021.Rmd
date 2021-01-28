@@ -1,0 +1,752 @@
+---
+title: "White Mat Syndrome - Warm Temperate Marginal Coral Communities"
+author: "Joshua Heitzman"
+date: "2021-01-13"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+  html_notebook: null
+---
+
+```{r setup, include=TRUE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+fig.path = "figures/",
+message = FALSE,
+warning = FALSE,
+dev = c("png", "pdf", "ps"))
+
+library("scales")
+library("ggplot2")
+library("forcats")
+library("tibble")
+library("ggpubr")
+library("dplyr")
+library("tidyverse")
+library("survival")
+library("survminer")
+library("rstatix")
+library("viridis")
+
+Sys.setlocale("LC_ALL","English")
+```
+ 
+##Survival Analysis of the Summer Incubation Experiment
+
+Survival analysis was conducted to see the infection rate over the duration of the experiment
+Output curves represented % of healthy coral for each treatment
+
+Includes 6 treatments: (a) Control (P. heronensis microcolonies), (b) sediment-trapping G. elegans, (c) sediment, (d) WMS microbial mat, 
+(e) lesion, and (f) lesion + WMS microbial mat
+
+All survival curves are compared pair-wise against the control to derive the p-value for each respective survival curve
+```{r Survival Analysis_Summer2020}
+
+LF2_data <- read.csv("SummerSurv_2020.csv")
+
+attach(LF2_data)
+
+LF2_data$Treatment <- 
+  factor(LF2_data$Treatment,
+         levels = c("Control", "Makusa", "Sediment", "WMS", "Lesion", "WMS_Lesion"),
+         labels = c("a","b", "c", "d", "e", "f"), ordered=TRUE)
+
+surv_object <- Surv(time = LF2_data$Day, event = LF2_data$Mortality_1)
+fit2 <- survfit(surv_object ~ Treatment, data = LF2_data)
+summary(fit2)
+ggsurvplot(fit2, data = LF2_data, pval = FALSE, conf.int = TRUE)
+textcol <- "grey40"
+
+survplot <- 
+  ggsurvplot(fit = fit2,data = surv_object, conf.int = TRUE, conf.int.alpha = 0.2,
+      ggtheme = 
+      theme_pubr() +
+      theme(
+        legend.position = "none",
+        legend.title = element_blank(),
+        axis.title.x = element_text (size = 12),
+        axis.title.y = element_text (size = 12),
+        axis.text.x = element_text (size = 10),
+        axis.text.y = element_text(size = 10))) 
+
+  
+##Pairwise comparison (Survival Analysis) of treatments against control treatment
+
+print("Control")
+survdiff(Surv(Day, Mortality_1) ~ Treatment, LF2_data)
+
+print("Sediment-Trapping G. elegans")
+survdiff(Surv(Day, Mortality_1) ~ Treatment, filter(LF2_data, Treatment %in% c("a","b")))
+
+print("Sediment")
+survdiff(Surv(Day, Mortality_1) ~ Treatment, filter(LF2_data, Treatment %in% c("a","c")))
+
+print("White Mat Syndrome Microbial Mat")
+survdiff(Surv(Day, Mortality_1) ~ Treatment, filter(LF2_data, Treatment %in% c("a","d")))
+
+print("Lesion Control")
+survdiff(Surv(Day, Mortality_1) ~ Treatment, filter(LF2_data, Treatment %in% c("a","e")))
+
+print("Lesion and Microbial Mat")
+survdiff(Surv(Day, Mortality_1) ~ Treatment, filter(LF2_data, Treatment %in% c("a","f")))
+
+detach(LF2_data)
+```
+
+##Multiple Kruskal-Wallis Pair-Wise Comparison of Partial Mortality of treatments during the Summer 2020 Incubation Experiment
+
+All treatments are compared against the control treatment
+
+```{r PartMort_KW Summer_2020}
+
+Treat_Summary <- 
+  read.csv("SummerPartMort_2020_KW.csv") %>% 
+  drop_na() %>% 
+  mutate(Treatment = factor(Treatment, levels = c("Control", "Makusa", "Sediment", "WMS", "Lesion", "WMS_Lesion"))) 
+
+print("KW overall")
+
+kruskal.test(Part_Mort ~ Treatment, data = Treat_Summary)
+G.elegans <-  kruskal.test(Part_Mort ~ Treatment, data = filter(Treat_Summary, Treatment %in% c("Control", "Makusa")))
+Sediment <-   kruskal.test(Part_Mort ~ Treatment, data = filter(Treat_Summary, Treatment %in% c("Control", "Sediment")))
+WMS <-        kruskal.test(Part_Mort ~ Treatment, data = filter(Treat_Summary, Treatment %in% c("Control", "WMS")))
+Lesion <-     kruskal.test(Part_Mort ~ Treatment, data = filter(Treat_Summary, Treatment %in% c("Control", "Lesion")))
+Lesion_WMS <- kruskal.test(Part_Mort ~ Treatment, data = filter(Treat_Summary, Treatment %in% c("Control", "WMS_Lesion")))
+
+print("Sediment-Trapping G. elegans")
+round(G.elegans$p.value*5, digits = 3)
+
+print("Sediment")
+round(Sediment$p.value*5, digits = 3)
+
+print("White Mat Syndrome Microbial Mat")
+round(WMS$p.value*5, digits = 3)
+
+print("Lesion Control")
+round(Lesion$p.value*5, digits = 3)
+
+print("Lesion and Microbial Mat")
+round(Lesion_WMS$p.value*5, digits = 3)
+```
+
+##Survival Analysis of the Winter Incubation Experiment
+
+Survival analysis was conducted to see the infection rate over the duration of the experiment
+Output curves represented % of healthy coral for each treatment
+
+Treatments include: (a) Control, (b) sediment-trapping G. elegans, (c) sediment and (d) WMS microbial mat
+```{r Survival_Analysis_Winter2019}
+LFw_data <- read.csv("WinterSurv_2019.csv")
+
+attach(LFw_data)
+
+LFw_data$Treatment <- 
+  factor(LFw_data$Treatment,
+         levels = c("Control", "Con_Mak", "Sediment", "WMS"),
+         labels = c("a","b", "c", "d"), ordered=TRUE)
+
+
+surv_object <- Surv(time = LFw_data$Day, event = LFw_data$Mortality_1)
+fit1w <- survfit(surv_object ~ Treatment, data = LFw_data)
+summary(fit1w)
+ggsurvplot(fit1w, data = LFw_data, pval = FALSE)
+
+textcol <- "grey40"
+
+survplot <- ggsurvplot(fit = fit1w,data = surv_object, 
+ggtheme = 
+theme_pubr() +
+  theme(
+    legend.position = "none",
+    legend.title = element_blank(),
+    axis.title.x = element_text (size = 12),
+    axis.title.y = element_text (size = 12),
+    axis.text.x = element_text (size = 10),
+    axis.text.y = element_text(size = 10)))
+
+detach(LFw_data)
+```
+
+##Radial Belt Transect data fitted as a linear model
+
+A linear model was fitted to observe if the data shows a negative slope.
+A negative slope in the RBT data represents the pathogen responsible may be 
+spread through waterborne transmission as RBT represents spatial distribution from
+an epicenter.
+
+```{r Radial Belt LM}
+radial.data <- read.csv("RBT_2020.csv")
+summary(lm(data = radial.data, Prevalence ~ Distance))
+
+ggplot(data = radial.data, aes(x = Distance, y = Prevalence)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+    labs(x = "Distance from epicenter (m)" ,
+         y= expression(atop(paste(bold("Disease Prevalence")), paste("(% of Infected Individuals)")))) +
+  theme_pubr()
+```
+
+##Calculation of average temperature during disease outbreaks
+##2013 omitted due to surveys beginning at the end of the year (September 2013)
+```{r Temp Calc}
+OISST <- readRDS("shimoda_time_series_updated.rda")
+
+ts <- ts2clm(OISST, climatologyPeriod = c("1982-01-01", "2011-12-31"))
+mhw <- detect_event(ts)
+
+mhw2014 <- mhw$climatology %>%
+        filter(between(t, as.Date("2014-06-16"), as.Date("2014-11-10")))
+mhw2015 <- mhw$climatology %>%
+        filter(between(t, as.Date("2015-09-23"), as.Date("2015-11-24")))
+mhw2016 <- mhw$climatology %>%
+        filter(between(t, as.Date("2016-09-05"), as.Date("2016-12-20")))
+mhw2017 <- mhw$climatology %>%
+        filter(between(t, as.Date("2017-08-25"), as.Date("2017-12-11")))
+mhw2018 <- mhw$climatology %>%
+        filter(between(t, as.Date("2018-08-18"), as.Date("2018-11-02")))
+mhw2019 <- mhw$climatology %>%
+        filter(between(t, as.Date("2019-09-02"), as.Date("2019-11-15")))
+mhw2020 <- mhw$climatology %>%
+        filter(between(t, as.Date("2020-09-15"), as.Date("2020-10-14")))
+
+mhw_outbreak <- bind_rows(mhw2014,mhw2015,mhw2016,mhw2017,mhw2018,mhw2019,mhw2020) %>% 
+  get_summary_stats(temp,type = "mean_sd")
+```
+
+## Disease Prevalence from September 2013 to December 2020
+## Paired with daily SST of the area and heatwave occurrence
+```{r fig 2 Prevalence}
+OISST <- readRDS("shimoda_time_series_updated.rda")
+
+ts <- ts2clm(OISST, climatologyPeriod = c("1982-01-01", "2011-12-31"))
+mhw <- detect_event(ts)
+
+mhw2 <- mhw$climatology %>%
+        filter(between(t, as.Date("2013-09-13"), as.Date("2020-12-08")))
+
+mhw2.plot <- ggplot(data = mhw2, aes(x = t)) +
+  geom_line(aes(y = temp, colour = "temp"), size = 0.5) +
+  geom_flame(aes(y = temp, y2 = thresh, fill = "event"), show.legend = T) +
+  scale_colour_manual(name = "Line Colour",
+                      values = c("temp" = "black", 
+                                 "thresh" =  "grey60", 
+                                 "seas" = "black")) +
+  scale_fill_manual(name = "Event Colour", 
+                    values = c("event" = "red")) +
+  scale_x_date(expand = c(0.004,0.004), date_breaks = "1 year", date_labels = "%b %Y") +
+  guides(colour = guide_legend(override.aes = list(fill = NA))) +
+  labs(y= expression(atop(paste(bold("Daily SST")), paste("(",degree ~C," )")))) +
+  coord_cartesian(ylim = c(10, 30)) +
+  theme_pubr() + theme(legend.position = "none") +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text (size = 8),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 7))
+
+#Setting up prevalence data
+#Prevalence of sediment-trapping G. elegans, prevalence of disease and number of disease occurrences per survey
+SC.G.elegans.data <- 
+  read_csv("Dis_Monthly_Monitoring.csv") %>%
+  mutate(Date = as.Date(Date)) %>%
+  mutate(Coverage_Deg_G_elegans = (Deg_G_Elegans/64)*100) %>% 
+  group_by(Date) %>%
+  get_summary_stats(type = "mean_sd",WMS_Prevalence, Coverage_Deg_G_elegans) %>%
+  filter(variable %in% "Coverage_Deg_G_elegans")
+
+Prevalence.data <- 
+  read_csv("Dis_Monthly_Monitoring.csv") %>%
+  mutate(Date = as.Date(Date)) %>%
+  filter(between(Date, as.Date("2013-09-13"), as.Date("2020-12-08"))) %>%
+  mutate(Coverage_Deg_G_elegans = (Deg_G_Elegans/64)*100) %>%
+  mutate(Percent_Prev = (WMS_Prevalence*100)) %>%
+  group_by(Date) %>%  
+  get_summary_stats(type = "mean_sd",Percent_Prev, Coverage_Deg_G_elegans) %>%
+  filter(variable %in% "Percent_Prev")
+
+SC.GE.plot <-
+  ggplot(data = SC.G.elegans.data, aes(x = Date)) +
+  geom_line(aes(y = mean)) +
+  geom_point(aes(y = mean),size = 1) +
+  geom_errorbar(aes(ymax = mean + sd, ymin = mean - sd)) +
+  labs(y= expression(atop(paste(bold("Sediment Trapping"~bolditalic("G. elegans"))), paste("(% of Total Coverage)")))) +
+  geom_hline(yintercept = 0, color = "grey") +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(size = 8),
+      axis.text.x = element_text(size = 8),  
+      axis.text.y = element_text(size = 7)) +  
+  coord_cartesian(ylim = c(0, 20)) +
+  scale_x_date(expand = c(0.004,0.004), date_breaks = "1 year", date_labels = "%Y")
+
+Dis.Prev.plot <-
+  ggplot(data = Prevalence.data, aes(x = Date, y = mean)) +
+  geom_line() +
+  geom_point(size = 1) +
+  geom_errorbar(aes(ymax = mean + sd, ymin = mean - sd)) +
+  labs(y= expression(atop(paste(bold("Disease")), paste("(% of Coral Coverage)")))) +
+  geom_hline(yintercept = 0, color = "grey") +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(size = 8),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 7) )+
+  coord_cartesian(ylim = c(0, 40)) +
+  scale_x_date(expand = c(0.004,0.004), date_breaks = "1 year", date_labels = "%Y")  
+
+Dis_Count.data <- read_csv("Dis_Count.csv")
+Dis_Count.plot <- ggplot(data = Dis_Count.data, aes(x = Date, y = Dis_Count)) + 
+  geom_point(size = 1) +
+  geom_line() +
+  labs(x = "", y= expression(atop(paste(bold("Disease")), paste("(# of Occurrences)")))) +
+  geom_hline(yintercept = 0, color = "grey") +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(size = 8),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 7) )+
+  scale_x_date(expand = c(0.004,0.004), date_breaks = "1 year", date_labels = "%Y")
+
+Dis.Prev.plot/Dis_Count.plot/mhw2.plot/SC.GE.plot + plot_annotation(tag_levels = 'A')
+```
+
+##ASV Table with bacteria taxon abundance from the WMS microbial mat compared with
+##Healthy P. heronensis, sediment-trapping G. elegans and sediment
+```{r ASV Input}
+
+ASV_list <- read.csv("4_ASV_Percent.csv")
+Taxa_list <- read.csv("Four_taxa.csv")
+
+ASV <- otu_table(ASV_list, taxa_are_rows = TRUE)
+TAX <- tax_table(as.matrix(Taxa_list))
+
+physeq_all = phyloseq(ASV, TAX)
+physeq_all_G = tax_glom(physeq_all, "Genus")
+physeq_all_G_heatmap <- psmelt(physeq_all_G)
+physeq_all_G_heatmap2 <- physeq_all_G_heatmap
+
+physeq_all_G_heatmap2$Sample <- factor(physeq_all_G_heatmap2$Sample, 
+  levels = c("ï..Disease", "Gelidium", "Health", "Sediment"), 
+  labels = c("a","b", "c", "d"), ordered=TRUE)
+
+physeq_names <- 
+  physeq_all_G_heatmap2 %>% 
+  mutate(Group = paste(as.character(Family), as.character(Genus), sep = " - ")) %>%
+  pivot_wider(values_from = Abundance, names_from = Sample) %>%
+  select(c("Group", "a","b", "c", "d")) %>%
+  arrange(-a,-b,-c,-d)
+
+physeq_all_G_heatmap$Sample <- factor(physeq_all_G_heatmap$Sample, 
+  levels = c("ï..Disease", "Gelidium", "Health", "Sediment"), 
+  labels = c("WMS","G. Elegans", "Healthy Coral", "Sediment"), ordered=TRUE)
+
+physeq_all_G_heatmap_edit <- physeq_all_G_heatmap %>%
+  mutate(Group=paste(Family, Genus, sep = " - ")) %>%
+  mutate(Group=factor(Group,levels=rev(physeq_names$Group))) %>%
+  mutate(Abundfactor=cut(Abundance,breaks=c(-1,0,0.001,0.01,0.05,0.1,0.25,0.5, 1),
+    labels=c("0","0-0.1","0.1-1","1-5","5-10","10-25","25-50","50-100"))) %>%
+  mutate(Abundfactor=factor(as.character(Abundfactor),levels=rev(levels(Abundfactor)))) %>%
+  na.omit()
+```
+
+```{r heatmap, fig.width = 8, fig.height = 12}
+textcol <- "grey40"
+heatmap.plot <- ggplot(data = physeq_all_G_heatmap_edit, mapping = aes(x = Sample,y = Group,fill = Abundfactor)) +
+  geom_tile() +
+  xlab(label = "") + 
+  theme_bw() +
+  scale_fill_manual(values=rev(brewer.pal(8,"Blues")),na.value="grey90") +
+  scale_y_discrete(expand=c(0,0)) +
+  scale_x_discrete(expand=c(0,0)) +
+  theme(legend.position="right",legend.direction="vertical",
+        legend.title=element_blank(),
+        legend.margin=margin(grid::unit(0,"cm")),
+        legend.text=element_text(colour=textcol,size=6,face="bold"),
+        legend.key.height=grid::unit(0.8,"cm"),
+        legend.key.width=grid::unit(0.2,"cm"),
+        axis.text.x=element_text(size=8,colour=textcol),
+        axis.text.y=element_text(size=8, vjust=0.2,colour=textcol),
+        axis.ticks=element_line(size=0.4),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        plot.background=element_blank(),
+        panel.border=element_blank(),
+        plot.margin=margin(0.7,0.4,0.1,0.2,"cm"),
+        plot.title=element_text(colour=textcol,hjust=0,size=14,face="bold"))
+
+heatmap.plot 
+```
+
+```{r 2018 to 2020 Disease Incidence, fig.height = 4, fig.width = 8}
+
+# Detect the events in a time series
+OISST <- readRDS("shimoda_time_series_updated.rda")
+ts <- ts2clm(OISST, climatologyPeriod = c("1982-01-01", "2011-12-31"))
+mhw <- detect_event(ts)
+
+mhw2 <- mhw$climatology %>%
+        filter(between(t, as.Date("2018-07-10"), as.Date("2020-02-15")))
+
+mhw2.plot <- ggplot(data = mhw2, aes(x = t)) +
+
+  geom_line(aes(y = temp, colour = "temp")) +
+    geom_line(aes(y = thresh, colour = "thresh"), size = 0.5, lty = "solid") +
+    geom_line(aes(y = seas, colour = "seas"), size = 0.5, lty = "dotted") +
+    geom_flame(aes(y = temp, y2 = thresh, fill = "event"), show.legend = T) +
+  scale_colour_manual(name = "Line Colour",
+                      values = c("temp" = "black", 
+                                 "thresh" =  "grey60", 
+                                 "seas" = "black")) +
+  scale_fill_manual(name = "Event Colour", 
+                    values = c("event" = "red")) +
+  scale_x_date(expand = c(0.004,0), date_breaks = "1 month", date_labels = "%b %Y") +
+  guides(colour = guide_legend(override.aes = list(fill = NA))) +
+  labs(y= expression(atop(paste(bold("Daily SST")), paste("( ",degree ~C," )"))))  +
+  coord_cartesian(xlim = c(as.Date("2018-07-10"), as.Date("2020-02-15")), ylim = c(15, 30)) +
+  theme_pubr() + theme(legend.position = "none") +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text (size = 9),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 8),
+      axis.ticks.x = element_blank(),
+      plot.margin = margin(6,6,3,6, unit = "pt")) +
+      scale_y_continuous(expand = c(0,0), limits = c(-1,30))
+
+weekly.suzaki.data <- read_csv("2019_Incidence_2.5_Suzaki.csv") %>% 
+  mutate(Date = as.Date(Date))  %>%
+        filter(between(Date, as.Date("2018-06-30"), as.Date("2020-02-15")))
+
+weekly.shidagaura.data <- read_csv("2019_Incidence_2.5.recheck.csv")%>% 
+  mutate(Date = as.Date(Date))  %>%
+        filter(between(Date, as.Date("2018-07-10"), as.Date("2020-02-15")))
+
+weekly.suzaki.plot <- ggplot(data = weekly.suzaki.data, aes(x = Date, y = Incidence)) + 
+  geom_point() +
+  geom_segment(aes(xend = Date, yend = 0 )) +
+  labs(x="",y = expression(atop(paste(bold("Site 2")), paste("Incidence")))) +
+  geom_hline(yintercept = 0, color = "grey") +
+
+  theme_pubr() +
+  theme(
+      axis.title.x = element_text (size = 10),
+      axis.title.y = element_text (size = 10),
+      axis.text.x = element_text (size = 8),
+      axis.text.y = element_text(size = 8)) +
+  scale_x_date(expand = c(0.004,0),date_breaks = "1 month", date_labels = "%m-%y") +
+  scale_y_continuous(expand = c(0,0), limits = c(-1,30)) +
+    coord_cartesian(xlim = c(as.Date("2018-07-10"), as.Date("2020-02-15")))
+
+
+weekly.shidagaura.plot <- ggplot(data = weekly.shidagaura.data, aes(x = Date, y = Incidence)) + 
+  geom_point() +
+  geom_segment(aes(xend = Date, yend = 0 )) +
+  labs(x="",y = expression(atop(paste(bold("Site 1")), paste("Incidence")))) +
+  geom_hline(yintercept = 0, color = "grey") +
+  theme_pubr() +
+  theme(
+axis.title.x = element_blank(),
+      axis.title.y = element_text (size = 10),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 8),
+      axis.ticks.x = element_blank())+
+      scale_x_date(expand = c(0.004,0)) +
+      scale_y_continuous(expand = c(0,0), limits = c(-1,30))+
+    coord_cartesian(xlim = c(as.Date("2018-07-10"), as.Date("2020-02-15")))
+
+(mhw2.plot/weekly.shidagaura.plot/weekly.suzaki.plot) + plot_annotation(tag_levels = "A")
+
+
+```
+
+```{r size frequency}
+size.freq.data.2019 <- read.csv("2019_Histogram_2.5.recheck.csv") %>% drop_na() 
+size.freq.data.2018 <- read.csv("2018_Histogram.csv") %>% drop_na()
+glimpse(size.freq.data)
+
+size.freq.data.2018$Size <- as.factor(size.freq.data.2018$Size)
+size.freq.data.2019$Size <- as.factor(size.freq.data.2019$Size)
+
+size.freq.plot.2018 <- ggplot(data = size.freq.data.2018) +
+  geom_col(aes(x = Size, y = Percent*100), position='dodge') +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_text (size = 10),
+      axis.title.y = element_text (size = 10),
+      axis.text.x = element_text(size = 8),
+      axis.text.y = element_text(size = 8)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,100), labels = function(x) paste0(x, "%")) +
+  coord_cartesian(ylim = c(0,50)) +
+  labs(x = expression("2018 (Size (cm"^2*"))"), y = "Occurrence Size Frequency")+
+  theme(legend.position = "none")
+
+size.freq.plot.2019 <- ggplot(data = size.freq.data.2019) +
+  geom_col(aes(x = Size, y = Percent*100), position='dodge') +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_text (size = 10),
+      axis.title.y = element_text (size = 10),
+      axis.text.x = element_text(size = 8),
+      axis.text.y = element_text(size = 8)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,100), labels = function(x) paste0(x, "%")) +
+  coord_cartesian(ylim = c(0,50)) +
+  labs(x = expression("2019 (Size (cm"^2*"))"), y = "")+
+  theme(legend.position = "none")
+  
+size.freq.plot.2018|size.freq.plot.2019 + plot_annotation(tag_levels = 'A')
+```
+
+##Algal and Coral Coverage of Site 1 and 2
+```{r Algal Prevalence at both sites}
+#Setting up Heatwave data
+OISST <- readRDS("shimoda_time_series_updated.rda")
+
+# Detect the events in a time series
+ts <- ts2clm(OISST, climatologyPeriod = c("1982-01-01", "2011-12-31"))
+mhw <- detect_event(ts)
+
+mhw2 <- mhw$climatology %>%
+        filter(between(t, as.Date("2013-09-13"), as.Date("2020-12-08")))
+
+mhw2.plot <- ggplot(data = mhw2, aes(x = t)) +
+  geom_line(aes(y = temp, colour = "temp"), size = 0.5) +
+  geom_flame(aes(y = temp, y2 = thresh, fill = "event"), show.legend = T) +
+  scale_colour_manual(name = "Line Colour",
+                      values = c("temp" = "black", 
+                                 "thresh" =  "grey60", 
+                                 "seas" = "black")) +
+  scale_fill_manual(name = "Event Colour", 
+                    values = c("event" = "red")) +
+  scale_x_date(expand = c(0.004,0.004), date_breaks = "1 year", date_labels = "%b %Y") +
+  guides(colour = guide_legend(override.aes = list(fill = NA))) +
+  labs(y= expression(atop(paste(bold("Temperature")), paste("(",degree ~C," )")))) +
+  coord_cartesian(ylim = c(10, 30)) +
+  theme_pubr() + theme(legend.position = "none") +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text (size = 8),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 7))
+
+SuzakiMonit.data <- read_csv("Suzaki_Prevalence.csv") %>%
+  mutate(SurveyDate = as.Date(Date, format = "%m/%d/%Y")) %>%
+  select(-Date, -CONCAT, -SA_WMS, -SA_PH, -WMS_Prevalence)%>%
+  mutate(Site = "Suzaki")
+
+ShidagMonit.data <- read_csv("Dis_Monthly_Monitoring.csv") %>%
+  mutate(SurveyDate = as.Date(Date, format = "%m/%d/%Y")) %>%
+  select(-Date, -CONCAT, -SA_WMS, -SA_PH, -WMS_Prevalence) %>%
+  mutate(Site = "Shidagaura")
+```
+
+```{r Algal Prevalence at both sites_cont, fig.height=6, fig.width= 12}
+monit.data <- bind_rows(ShidagMonit.data, SuzakiMonit.data) %>%
+  drop_na() %>%
+  mutate(Total = rowSums(select(., !c("SurveyDate","Site","Quadrat"))))  %>%
+  mutate(across(.cols = -c("SurveyDate","Site","Quadrat", "Total"), ~ . * 100)) %>%
+  mutate(across(.cols = -c("SurveyDate","Site","Quadrat", "Total"), ~ . / Total))
+
+monitor.coral.data <- monit.data %>%
+  mutate(Coral_Disease = Active_WMS + Recessive_WMS, Dead_Coral = Dead_Coral + RCKilled_WMS) %>%
+  select( SurveyDate, Healthy_Coral, Bleached_Coral, Coral_Disease, -RCKilled_WMS,  -Active_WMS, -Recessive_WMS, Site) %>%
+  group_by(SurveyDate, Site) %>%
+  mutate(Total_Coral = Healthy_Coral + Bleached_Coral + Coral_Disease) %>%
+  mutate(Healthy_Coral = Healthy_Coral/Total_Coral * 100,
+         Bleached_Coral = Bleached_Coral/Total_Coral * 100,
+         Coral_Disease = Coral_Disease/Total_Coral * 100) %>%
+  select(-Total_Coral) %>%
+  get_summary_stats(type = "mean_sd")
+
+
+monitor.algae.data <- monit.data %>%
+  drop_na() %>%
+  select(-Healthy_Coral, -Bleached_Coral,  -RCKilled_WMS,  -Active_WMS, -Recessive_WMS, -Off, -Dead_Coral, -Crustacean, -Bare_Sub, -Urchin, -Anemone) %>%
+  mutate(G_Elegans = G_Elegans + Deg_G_Elegans) %>%
+  select(- Deg_G_Elegans) %>%
+  mutate(Total_Algae = rowSums(select(., !c("SurveyDate","Site","Quadrat", "Total")))) %>%
+  mutate(Total_Kelp = rowSums(select(., c("E_Eisenia", "U_Pinnatifida")))) %>%
+  group_by(Site, SurveyDate) %>%
+  get_summary_stats(type = "mean") %>%
+  mutate(AlgaeLabels = if_else(variable == "Total_Kelp" & mean == 0, "0", ""))
+
+
+monitor.algae.data <- monitor.algae.data %>%
+  mutate(jap_label = factor(variable, 
+levels = c("Alg_Other", "Branched_Cor_Alg", "C_Sinuosa", "Crust_Cor_Alg", "E_Eisenia", "G_Elegans", "Non_Crust_Alg",
+"P_Arborescens", "Quadrat", "Red_Alg", "Sargassum_spp", "Total", "Total_Algae", "Total_Kelp", "U_Pinnatifida"),
+labels = c("Algae Other", "BCA", "C. sinuosa", "CCA", "E. cava, E. bicyclis", "G. elegans", "NCCA", "P. arborescens", "Other", "Rhodophyta", "Sargassum spp.", "Total", "Total Algae", "Total Kelp", "U. pinnatifida")))
+
+coralSuzaki.Healthy.plot <- monit.data %>%
+  filter(Site == "Suzaki") %>%
+  group_by(SurveyDate) %>%
+  get_summary_stats(Healthy_Coral, type = "mean") %>%
+  ggplot(aes(x = SurveyDate, y= mean)) +
+  geom_col(aes(fill = variable)) +
+  theme_pubr() +
+  theme(legend.position = "bottom") +
+  labs(y ="Coral Coverage (%)", x = "Year - Month" )+
+  scale_x_date(date_breaks = "4 months", date_labels = "%y-%m")+
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_manual(name = "", labels = c(""), values = c( "black")) +
+  theme(legend.position = "none",
+        axis.title.x = element_text (size = 8),
+        axis.title.y = element_text (size = 8),
+        axis.text.x = element_text (size = 6),
+        axis.text.y = element_text(size = 6))
+
+coralShidagaura.Healthy.plot <- monit.data %>%
+  filter(Site == "Shidagaura") %>%
+  group_by(SurveyDate) %>%
+  get_summary_stats(Healthy_Coral, type = "mean") %>%
+  ggplot(aes(x = SurveyDate, y= mean)) +
+  geom_col(aes(fill = variable)) +
+  theme_pubr() +
+  theme(legend.position = "bottom") +
+  labs(y ="Coral Coverage (%)", x = "Year - Month" )+
+  scale_x_date(date_breaks = "6 months", date_labels = "%y-%m")+
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_manual(name = "", labels = c(""), values = c( "black")) +
+  theme(legend.position = "none",
+        axis.title.x = element_text (size = 8),
+        axis.title.y = element_text (size = 8),
+        axis.text.x = element_text (size = 6),
+        axis.text.y = element_text(size = 6))
+
+viridis_colors <- as.data.frame(unique(filter(monitor.algae.data, !variable %in% c("Total", "Total_Algae", "Total_Kelp"))$jap_label)) %>%
+  cbind(.,viridis(12))
+
+Suzaki.Algae.plot <- monitor.algae.data %>%
+  filter(Site == "Suzaki" & !variable %in% c("Total", "Total_Algae", "Total_Kelp")) %>%
+  ggplot(aes(x = SurveyDate, y= mean, color = jap_label)) +
+  geom_col(aes(fill = jap_label)) +
+  theme_pubr() +
+  labs(y ="Algae Coverage (%)", x = "Year - Month" )+
+  scale_x_date(date_breaks = "4 months", date_labels = "%y-%m")+
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_manual(name = "Algae",values = viridis_colors[,2]) +
+  scale_color_manual(name = "Algae",values = viridis_colors[,2]) +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.title.y = element_text (size = 8),
+        axis.text.x = element_text (size = 6),
+        axis.text.y = element_text(size = 6))
+
+Shidagaura.Algae.plot <- monitor.algae.data %>%
+  filter(Site == "Shidagaura"& !variable %in% c("Total", "Total_Algae", "Total_Kelp")) %>%
+  ggplot(aes(x = SurveyDate, y= mean, color = jap_label)) +
+  geom_col(aes(fill = jap_label)) +
+  theme_pubr() +
+  labs(y ="Algae Coverage (%)", x = "Year - Month" )+
+  scale_x_date(date_breaks = "6 months", date_labels = "%y-%m")+
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_manual(name = "Algae",values = viridis_colors[,2]) +
+  scale_color_manual(name = "Algae",values = viridis_colors[,2]) +
+  theme(legend.position = "top",
+        legend.text = element_text(size = 8),
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text (size = 8),
+        axis.text.x = element_text (size = 6),
+        axis.text.y = element_text(size = 6))
+
+((Shidagaura.Algae.plot/coralShidagaura.Healthy.plot)|(Suzaki.Algae.plot/coralSuzaki.Healthy.plot)) + plot_annotation(tag_levels = "A") + plot_layout(widths = c(3,1))
+```
+
+```{r in situ HOBO temp logger - lost data}
+Suzaki.HOBO.temp.data <- 
+  read_csv("HOBOtemp_18.19.20_Suzaki.csv") %>% 
+  mutate(Date = as.Date(Date))  %>%
+        filter(between(Date, as.Date("2018-09-30"), as.Date("2020-02-10")))
+
+Shida.HOBO.temp.data <- 
+  read_csv("HOBOtemp_18.19.20.csv") %>% 
+  mutate(Date = as.Date(Date)) %>%
+        filter(between(Date, as.Date("2018-09-30"), as.Date("2020-02-10")))
+
+Suzaki.HOBO.temp.plot <- ggplot(Suzaki.HOBO.temp.data, aes(x = Date, y = Temp)) +
+  geom_line() +
+  labs(y= expression(atop(paste(bold("Site 2 - Suzaki Site")), paste("Temperature (",degree ~C,")")))) +
+  coord_cartesian(ylim = c(15, 30)) +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text (size = 9),
+      axis.text.x = element_text(size = 8),
+      axis.text.y = element_text(size = 8)) +
+  scale_x_date(date_breaks = "2 month", date_labels = "%m-%y")
+
+Shida.HOBO.temp.plot <- ggplot(Shida.HOBO.temp.data, aes(x = Date, y = Temp)) +
+  geom_line() +
+  labs(y= expression(atop(paste(bold("Site 1 - Shidagaura Site")), paste("Temperature (",degree ~C,")")))) +
+  coord_cartesian(ylim = c(15, 30)) +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text (size = 9),
+      axis.text.x = element_text(size = 8),
+      axis.text.y = element_text(size = 8)) +
+  scale_x_date(date_breaks = "2 month", date_labels = "%m-%y")
+
+(Shida.HOBO.temp.plot/Suzaki.HOBO.temp.plot) + plot_annotation(tag_levels = "A")
+```
+
+```{r figure extensive prevalence, fig.width= 5, fig.height= 3}
+OISST <- readRDS("shimoda_time_series_updated.rda")
+
+# Detect the events in a time series
+ts <- ts2clm(OISST, climatologyPeriod = c("1982-01-01", "2011-12-31"))
+mhw <- detect_event(ts)
+
+mhw2 <- mhw$climatology %>%
+        filter(between(t, as.Date("2020-07-20"), as.Date("2020-12-08")))
+
+n50mhw2.plot <- ggplot(data = mhw2, aes(x = t)) +
+  geom_line(aes(y = temp, colour = "temp"), size = 0.5) +
+  geom_line(aes(y = thresh, colour = "thresh"), size = 0.5, lty = "solid") +
+  geom_line(aes(y = seas, colour = "seas"), size = 0.5, lty = "dotted") +
+  geom_flame(aes(y = temp, y2 = thresh, fill = "event"), show.legend = T) +
+  scale_colour_manual(name = "Line Colour",
+                      values = c("temp" = "black", 
+                                 "thresh" =  "grey60", 
+                                 "seas" = "black")) +
+  scale_fill_manual(name = "Event Colour", 
+                    values = c("event" = "red")) +
+  scale_x_date(expand = c(0.004,0.004), date_breaks = "1 year", date_labels = "%b %Y") +
+  guides(colour = guide_legend(override.aes = list(fill = NA))) +
+  labs(y= expression(atop(paste(bold("Temperature")), paste("(",degree ~C," )")))) +
+  coord_cartesian(ylim = c(18, 30)) +
+  theme_pubr() + theme(legend.position = "none") +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text (size = 8),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(size = 7))
+
+Colony.SA <- 
+  read_csv("Shida_Prev_n50.csv") %>%
+  mutate(Date = as.Date(Date)) %>%
+  group_by(Date) %>%
+  get_summary_stats(Percentage, type = "mean_sd")
+
+n50.plot <-
+  ggplot(data = Colony.SA, aes(x = Date, y = mean)) +
+  geom_line(aes(y = mean)) +
+  geom_point(aes(y = mean),size = 1) +
+  geom_errorbar(aes(ymax = mean + sd, ymin = mean - sd), size = 0.5, width = 3 ) +
+  labs(y= expression(atop(paste(bold("Disease Prevalence")), paste("(% of Coral Coverage)")))) +
+  geom_hline(yintercept = 0, color = "grey") +
+  theme_pubr() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_text(size = 8),
+      axis.text.x = element_text(size = 8),  
+      axis.text.y = element_text(size = 7)) +  
+  coord_cartesian(ylim = c(0, 20)) +
+  scale_x_date(expand = c(0.004,0), date_breaks = "1 month", date_labels = "%m-%y")
+
+n50mhw2.plot/n50.plot + plot_annotation(tag_levels = "A")
+```
